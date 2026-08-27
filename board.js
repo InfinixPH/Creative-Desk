@@ -35,12 +35,14 @@ function ticketHTML(r) {
   const col = statusToColumn(r.Status);
   const stamp = col === 'done' ? '<div class="stamp done">Done</div>'
               : col === 'void' ? '<div class="stamp void">Void</div>' : '';
+  const overdue = isOverdue(r.Deadline, r.Status);
+  const deadlineLabel = overdue ? `⚠ ${fmtDate(r.Deadline)}` : fmtDate(r.Deadline);
   return `
     <div class="ticket" onclick="openModal('${r.RequestID}')">
       <div class="tape"></div>
       <div class="t-id">${r.RequestID}</div>
       <div class="t-title">${escapeHTML(r.ProjectTitle)}</div>
-      <div class="t-meta"><span>${escapeHTML(r.RequestorName)}</span><span class="t-deadline">${fmtDate(r.Deadline)}</span></div>
+      <div class="t-meta"><span>${escapeHTML(r.RequestorName)}</span><span class="t-deadline${overdue ? ' soon' : ''}">${deadlineLabel}</span></div>
       ${stamp}
     </div>`;
 }
@@ -61,10 +63,20 @@ async function loadBoard() {
   }
 }
 
+function sortByDeadline(list) {
+  return list.slice().sort((a, b) => {
+    const da = new Date(a.Deadline), db = new Date(b.Deadline);
+    const va = isNaN(da) ? Infinity : da.getTime();
+    const vb = isNaN(db) ? Infinity : db.getTime();
+    return va - vb;
+  });
+}
+
 function renderBoard() {
   document.getElementById('board-loading').style.display = 'none';
   const cols = { pending: [], ongoing: [], done: [], void: [] };
   allRequests.forEach(r => cols[statusToColumn(r.Status)].push(r));
+  ['pending', 'ongoing', 'done'].forEach(c => cols[c] = sortByDeadline(cols[c]));
 
   ['pending', 'ongoing', 'done', 'void'].forEach(c => {
     document.getElementById(`col-${c}`).innerHTML = cols[c].map(ticketHTML).join('');
@@ -85,10 +97,20 @@ function openModal(id) {
   document.getElementById('m-due').textContent = 'Due ' + fmtDate(currentTicket.Deadline);
   document.getElementById('m-brief').textContent = currentTicket.Brief;
 
+  const refRow = document.getElementById('m-ref-row');
+  if (currentTicket.ReferenceLink) {
+    refRow.style.display = 'block';
+    refRow.innerHTML = `<a href="${escapeHTML(currentTicket.ReferenceLink)}" target="_blank" class="file-link">📎 View reference →</a>`;
+  } else {
+    refRow.style.display = 'none';
+  }
+
   currentStatus = currentTicket.Status;
   document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('sel', b.dataset.s === currentStatus));
   document.getElementById('attach-box').classList.toggle('show', currentStatus === 'Done');
   document.getElementById('attach-input').value = currentTicket.FileLink || '';
+  document.getElementById('notes-input').value = currentTicket.Notes || '';
+  document.getElementById('reopen-btn').style.display = currentTicket.Status === 'Done' ? 'block' : 'none';
 
   document.getElementById('overlay').classList.add('active');
 }
@@ -103,10 +125,16 @@ function setStatus(s) {
   document.getElementById('attach-box').classList.toggle('show', s === 'Done');
 }
 
+function reopenTicket() {
+  setStatus('Ongoing');
+  confirmStatus();
+}
+
 async function confirmStatus() {
   if (!currentTicket) return;
   const btn = document.getElementById('confirm-btn');
   const fileLink = document.getElementById('attach-input').value.trim();
+  const notes = document.getElementById('notes-input').value.trim();
 
   if (currentStatus === 'Done' && !fileLink) {
     alert('Add a file link before marking this Done — that\'s what gets sent to the requestor.');
@@ -122,7 +150,8 @@ async function confirmStatus() {
         action: 'updateStatus',
         id: currentTicket.RequestID,
         status: currentStatus,
-        fileLink: fileLink
+        fileLink: fileLink,
+        notes: notes
       })
     });
     const data = await res.json();
