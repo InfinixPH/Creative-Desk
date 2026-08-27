@@ -14,6 +14,7 @@ document.getElementById('f-submit').addEventListener('click', async () => {
   const email = document.getElementById('f-email').value.trim();
   const title = document.getElementById('f-title').value.trim();
   const brief = document.getElementById('f-brief').value.trim();
+  const referenceLink = document.getElementById('f-reference').value.trim();
   const deadline = document.getElementById('f-deadline').value;
   const resultEl = document.getElementById('f-result');
 
@@ -36,6 +37,7 @@ document.getElementById('f-submit').addEventListener('click', async () => {
         requestorEmail: email,
         projectTitle: title,
         brief: brief,
+        referenceLink: referenceLink,
         deadline: deadline
       })
     });
@@ -44,7 +46,7 @@ document.getElementById('f-submit').addEventListener('click', async () => {
 
     resultEl.textContent = `✓ Submitted — your ticket ID is ${data.id}. Save it to track status.`;
     resultEl.className = 'result-msg ok';
-    ['f-name', 'f-email', 'f-title', 'f-brief', 'f-deadline'].forEach(id => document.getElementById(id).value = '');
+    ['f-name', 'f-email', 'f-title', 'f-brief', 'f-reference', 'f-deadline'].forEach(id => document.getElementById(id).value = '');
   } catch (err) {
     resultEl.textContent = 'Something went wrong — try again.';
     resultEl.className = 'result-msg err';
@@ -78,6 +80,7 @@ document.getElementById('tr-check').addEventListener('click', async () => {
 
 function renderReceipt(r) {
   const col = statusToColumn(r.Status);
+  const overdue = isOverdue(r.Deadline, r.Status);
   const pillLabel = { pending: 'Pending', ongoing: 'Ongoing', done: '✓ Done', void: 'Cancelled' }[col];
 
   let fileLinkHTML = '';
@@ -85,12 +88,19 @@ function renderReceipt(r) {
     fileLinkHTML = `<a href="${escapeHTML(r.FileLink)}" target="_blank" class="file-link">📎 View final file →</a>`;
   }
 
+  let notesHTML = '';
+  if (r.Notes) {
+    notesHTML = `<div class="modal-brief" style="margin-top:14px;">${escapeHTML(r.Notes)}</div>`;
+  }
+
   document.getElementById('tr-result').innerHTML = `
     <div class="receipt">
       <span class="status-pill ${col}">${pillLabel}</span>
+      ${overdue ? '<span class="status-pill void" style="margin-left:6px;">⚠ Past deadline</span>' : ''}
       <div class="r-title">${escapeHTML(r.ProjectTitle)}</div>
       <div class="t-meta" style="border:none; padding:0;"><span>${r.RequestID}</span><span>Requested by ${escapeHTML(r.RequestorName)}</span></div>
       ${fileLinkHTML}
+      ${notesHTML}
       <div class="timeline">
         <div class="tl-item"><b>${fmtDate(r.Timestamp)}</b> — Ticket submitted</div>
         ${r.Status !== 'Pending' ? `<div class="tl-item"><b>${fmtDate(r.LastUpdated)}</b> — Status: ${r.Status}</div>` : ''}
