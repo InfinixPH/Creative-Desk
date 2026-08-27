@@ -65,6 +65,9 @@
     <h3 id="m-title">Title</h3>
     <div class="modal-row"><span id="m-req">Requestor</span><span id="m-due">Due</span></div>
     <div class="modal-brief" id="m-brief">Brief text</div>
+    <div id="m-ref-row" style="display:none; margin:-8px 0 16px;"></div>
+
+    <button class="reopen-btn" id="reopen-btn" style="display:none;" onclick="reopenTicket()">↺ Reopen — needs revision</button>
 
     <div class="status-row">
       <button class="status-btn" data-s="Pending" onclick="setStatus('Pending')">Pending</button>
@@ -76,6 +79,11 @@
     <div class="attach-box" id="attach-box">
       <label>File link (poster, design, etc.)</label>
       <input type="text" id="attach-input" placeholder="https://drive.google.com/...">
+    </div>
+
+    <div class="field" style="margin-top:14px;">
+      <label>Notes (visible to the requestor when they track this ticket)</label>
+      <textarea id="notes-input" placeholder="e.g. waiting on brand assets, questions for the requestor..."></textarea>
     </div>
 
     <button class="confirm-btn" id="confirm-btn" onclick="confirmStatus()">Save & Notify</button>
