@@ -20,6 +20,15 @@ function escapeHTML(str) {
   return div.innerHTML;
 }
 
+function isOverdue(deadline, status) {
+  if (!deadline || status === 'Done' || status === 'Cancelled') return false;
+  const d = new Date(deadline);
+  if (isNaN(d)) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return d < today;
+}
+
 function showToast(msg) {
   const toast = document.getElementById('toast');
   if (!toast) return;
