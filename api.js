@@ -3,7 +3,7 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxTuZWSd0mUOrcusWsa9a3L
 
 // Tip jar — edit these anytime you want to change the number, QR image, or message.
 // To change the QR: just replace the image file in your repo with the same filename below.
-const COFFEE_NUMBER = '0956-814-5772'; // <-- your GCash number
+const COFFEE_NUMBER = '0917-XXX-XXXX'; // <-- your GCash number
 const COFFEE_QR_IMAGE = 'coffee-qr.png'; // <-- filename of your QR image in the repo root
 const COFFEE_TITLE = '☕ Happy with it?'; // <-- heading shown above the message
 const COFFEE_MESSAGE = "If you'd like, you can send a coffee as a token of appreciation — totally optional, but always appreciated!"; // <-- the message itself
