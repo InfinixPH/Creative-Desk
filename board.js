@@ -1,290 +1,98 @@
-// ==== PIN GATE ====
-const BOARD_PIN = '1234'; // change this to whatever you like
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Board — Creative Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
 
-function checkPin() {
-  const input = document.getElementById('pin-input').value.trim();
-  const errEl = document.getElementById('pin-error');
-  if (input === BOARD_PIN) {
-    sessionStorage.setItem('board-unlocked', 'yes');
-    document.getElementById('pin-gate').style.display = 'none';
-    document.getElementById('board-app').style.display = 'block';
-    loadBoard();
-  } else {
-    errEl.textContent = 'Wrong PIN.';
-  }
-}
+<!-- PIN GATE -->
+<div id="pin-gate" class="pin-gate">
+  <div class="pin-box">
+    <div class="brand-mark">infinix · creative desk</div>
+    <h2>Artist Board</h2>
+    <input type="password" id="pin-input" placeholder="Enter PIN" inputmode="numeric">
+    <button id="pin-submit">Unlock</button>
+    <div id="pin-error" class="pin-error"></div>
+  </div>
+</div>
 
-document.getElementById('pin-submit').addEventListener('click', checkPin);
-document.getElementById('pin-input').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') checkPin();
-});
+<!-- BOARD APP -->
+<div id="board-app" style="display:none;">
+<div class="wrap">
 
-if (sessionStorage.getItem('board-unlocked') === 'yes') {
-  document.getElementById('pin-gate').style.display = 'none';
-  document.getElementById('board-app').style.display = 'block';
-  loadBoard();
-}
-
-// ==== STATE ====
-let allRequests = [];
-let currentTicket = null;
-let currentStatus = null;
-let showingArchive = false;
-let searchTerm = '';
-
-const COLUMNS = [
-  { key: 'pending', label: 'Pending' },
-  { key: 'ongoing', label: 'Ongoing' },
-  { key: 'done', label: 'Done' },
-  { key: 'void', label: 'Cancelled' }
-];
-
-// ==== FLAG HELPERS ====
-function isTrue(v) { return v === true || v === 'TRUE' || v === 'true'; }
-
-// ==== TICKET RENDER ====
-function ticketHTML(r) {
-  const col = statusToColumn(r.Status);
-  const stamp = col === 'done' ? '<div class="stamp done">Done</div>'
-              : col === 'void' ? '<div class="stamp void">Void</div>' : '';
-  const overdue = isOverdue(r.Deadline, r.Status);
-  const deadlineLabel = overdue ? `⚠ ${fmtDate(r.Deadline)}` : fmtDate(r.Deadline);
-  const flame = isTrue(r.Priority) ? '🔥 ' : '';
-  return `
-    <div class="ticket" onclick="openModal('${r.RequestID}')">
-      <div class="tape"></div>
-      <div class="t-id">${r.RequestID}</div>
-      <div class="t-title">${flame}${escapeHTML(r.ProjectTitle)}</div>
-      <div class="t-meta"><span>${escapeHTML(r.RequestorName)}</span><span class="t-deadline${overdue ? ' soon' : ''}">${deadlineLabel}</span></div>
-      ${stamp}
-    </div>`;
-}
-
-// ==== LOAD BOARD ====
-async function loadBoard() {
-  document.getElementById('board-loading').style.display = 'block';
-  document.getElementById('board-empty').style.display = 'none';
-  try {
-    const res = await fetch(`${API_URL}?action=list`);
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.error || 'Failed to load');
-    allRequests = data.requests;
-    renderStats();
-    renderBoard();
-  } catch (err) {
-    document.getElementById('board-loading').textContent = 'Could not load tickets. Refresh to try again.';
-    console.error(err);
-  }
-}
-
-// ==== STATS ====
-function renderStats() {
-  const active = allRequests.filter(r => !isTrue(r.Archived));
-  const open = active.filter(r => r.Status === 'Pending' || r.Status === 'Ongoing').length;
-  const overdue = active.filter(r => isOverdue(r.Deadline, r.Status)).length;
-
-  const now = new Date();
-  const doneThisMonth = active.filter(r => {
-    if (r.Status !== 'Done') return false;
-    const d = new Date(r.LastUpdated);
-    return !isNaN(d) && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  }).length;
-
-  const doneWithDates = active.filter(r => r.Status === 'Done' && r.Timestamp && r.LastUpdated);
-  let avgTurnaround = '—';
-  if (doneWithDates.length > 0) {
-    const totalDays = doneWithDates.reduce((sum, r) => {
-      const start = new Date(r.Timestamp), end = new Date(r.LastUpdated);
-      if (isNaN(start) || isNaN(end)) return sum;
-      return sum + Math.max(0, (end - start) / (1000 * 60 * 60 * 24));
-    }, 0);
-    avgTurnaround = (totalDays / doneWithDates.length).toFixed(1);
-  }
-
-  document.getElementById('stat-open').textContent = open;
-  document.getElementById('stat-overdue').textContent = overdue;
-  document.getElementById('stat-done-month').textContent = doneThisMonth;
-  document.getElementById('stat-avg').textContent = avgTurnaround;
-}
-
-// ==== SORT ====
-function sortTickets(list) {
-  return list.slice().sort((a, b) => {
-    const pa = isTrue(a.Priority) ? 0 : 1;
-    const pb = isTrue(b.Priority) ? 0 : 1;
-    if (pa !== pb) return pa - pb;
-    const da = new Date(a.Deadline), db = new Date(b.Deadline);
-    const va = isNaN(da) ? Infinity : da.getTime();
-    const vb = isNaN(db) ? Infinity : db.getTime();
-    return va - vb;
-  });
-}
-
-// ==== FILTER ====
-function matchesSearch(r) {
-  if (!searchTerm) return true;
-  const t = searchTerm.toLowerCase();
-  return (r.RequestorName || '').toLowerCase().includes(t) ||
-         (r.ProjectTitle || '').toLowerCase().includes(t) ||
-         (r.RequestID || '').toLowerCase().includes(t);
-}
-
-// ==== RENDER BOARD (dynamic columns) ====
-function renderBoard() {
-  document.getElementById('board-loading').style.display = 'none';
-
-  const pool = allRequests.filter(r => isTrue(r.Archived) === showingArchive).filter(matchesSearch);
-
-  const boardEl = document.getElementById('board');
-  boardEl.innerHTML = COLUMNS.map(c => `
+  <header>
     <div>
-      <div class="col-head"><span class="col-title">${c.label}</span><span class="col-line"></span><span class="col-count" id="count-${c.key}">0</span></div>
-      <div id="col-${c.key}"></div>
-    </div>`).join('');
+      <div class="brand-mark">infinix · creative desk</div>
+      <h1>Job Ticket Board</h1>
+      <div class="sub">// requests come in, tickets get worked, requestors get pinged</div>
+    </div>
+  </header>
 
-  COLUMNS.forEach(c => {
-    const list = sortTickets(pool.filter(r => statusToColumn(r.Status) === c.key));
-    document.getElementById(`col-${c.key}`).innerHTML = list.map(ticketHTML).join('');
-    document.getElementById(`count-${c.key}`).textContent = list.length;
-  });
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat"><div class="stat-num" id="stat-open">0</div><div class="stat-label">Open</div></div>
+    <div class="stat"><div class="stat-num overdue" id="stat-overdue">0</div><div class="stat-label">Overdue</div></div>
+    <div class="stat"><div class="stat-num" id="stat-done-month">0</div><div class="stat-label">Done this month</div></div>
+    <div class="stat"><div class="stat-num" id="stat-avg">—</div><div class="stat-label">Avg turnaround (days)</div></div>
+  </div>
 
-  document.getElementById('board-empty').style.display = pool.length === 0 ? 'block' : 'none';
-  document.getElementById('board-empty').textContent = showingArchive ? 'Nothing archived yet.' : 'No tickets yet.';
-}
+  <div class="board-controls">
+    <input type="text" id="search-input" placeholder="Search by name, title, or ticket ID…">
+    <button id="archive-toggle">View archive</button>
+  </div>
 
-// ==== SEARCH ====
-document.getElementById('search-input').addEventListener('input', (e) => {
-  searchTerm = e.target.value.trim();
-  renderBoard();
-});
+  <div class="board" id="board"></div>
+  <div id="board-empty" class="empty-msg" style="display:none;">Nothing here.</div>
+  <div id="board-loading" class="empty-msg">Loading tickets…</div>
 
-// ==== ARCHIVE TOGGLE (view) ====
-document.getElementById('archive-toggle').addEventListener('click', () => {
-  showingArchive = !showingArchive;
-  document.getElementById('archive-toggle').textContent = showingArchive ? 'Back to board' : 'View archive';
-  renderBoard();
-});
+</div>
+</div>
 
-// ==== MODAL ====
-function openModal(id) {
-  currentTicket = allRequests.find(r => r.RequestID === id);
-  if (!currentTicket) return;
+<!-- MODAL -->
+<div class="overlay" id="overlay" onclick="if(event.target===this) closeModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕ close</button>
+    <div class="t-id" id="m-id">REQ-0000</div>
+    <h3 id="m-title">Title</h3>
+    <div class="modal-row"><span id="m-req">Requestor</span><span id="m-due">Due</span></div>
+    <div class="modal-brief" id="m-brief">Brief text</div>
+    <div id="m-ref-row" style="display:none; margin:-8px 0 16px;"></div>
 
-  document.getElementById('m-id').textContent = currentTicket.RequestID;
-  document.getElementById('m-title').textContent = currentTicket.ProjectTitle;
-  document.getElementById('m-req').textContent = currentTicket.RequestorName;
-  document.getElementById('m-due').textContent = 'Due ' + fmtDate(currentTicket.Deadline);
-  document.getElementById('m-brief').textContent = currentTicket.Brief;
+    <div class="modal-toggles">
+      <button class="toggle-btn" id="priority-btn" onclick="togglePriority()">🔥 Priority</button>
+      <button class="toggle-btn" id="archive-btn" onclick="toggleArchive()" style="display:none;">🗄 Archive</button>
+    </div>
 
-  const refRow = document.getElementById('m-ref-row');
-  if (currentTicket.ReferenceLink) {
-    refRow.style.display = 'block';
-    refRow.innerHTML = `<a href="${escapeHTML(currentTicket.ReferenceLink)}" target="_blank" class="file-link">📎 View reference →</a>`;
-  } else {
-    refRow.style.display = 'none';
-  }
+    <button class="reopen-btn" id="reopen-btn" style="display:none;" onclick="reopenTicket()">↺ Reopen — needs revision</button>
 
-  currentStatus = currentTicket.Status;
-  document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('sel', b.dataset.s === currentStatus));
-  document.getElementById('attach-box').classList.toggle('show', currentStatus === 'Done');
-  document.getElementById('attach-input').value = currentTicket.FileLink || '';
-  document.getElementById('notes-input').value = currentTicket.Notes || '';
-  document.getElementById('reopen-btn').style.display = currentTicket.Status === 'Done' ? 'block' : 'none';
+    <div class="status-row">
+      <button class="status-btn" data-s="Pending" onclick="setStatus('Pending')">Pending</button>
+      <button class="status-btn" data-s="Ongoing" onclick="setStatus('Ongoing')">Ongoing</button>
+      <button class="status-btn" data-s="Done" onclick="setStatus('Done')">Done</button>
+      <button class="status-btn" data-s="Cancelled" onclick="setStatus('Cancelled')">Cancel</button>
+    </div>
 
-  const priorityBtn = document.getElementById('priority-btn');
-  priorityBtn.classList.toggle('on', isTrue(currentTicket.Priority));
+    <div class="attach-box" id="attach-box">
+      <label>File link (poster, design, etc.)</label>
+      <input type="text" id="attach-input" placeholder="https://drive.google.com/...">
+    </div>
 
-  const archiveBtn = document.getElementById('archive-btn');
-  const canArchive = currentTicket.Status === 'Done' || currentTicket.Status === 'Cancelled';
-  archiveBtn.style.display = canArchive ? 'inline-block' : 'none';
-  archiveBtn.textContent = isTrue(currentTicket.Archived) ? '🗄 Unarchive' : '🗄 Archive';
+    <div class="field" style="margin-top:14px;">
+      <label>Notes (visible to the requestor when they track this ticket)</label>
+      <textarea id="notes-input" placeholder="e.g. waiting on brand assets, questions for the requestor..."></textarea>
+    </div>
 
-  document.getElementById('overlay').classList.add('active');
-}
+    <button class="confirm-btn" id="confirm-btn" onclick="confirmStatus()">Save & Notify</button>
+  </div>
+</div>
 
-function closeModal() {
-  document.getElementById('overlay').classList.remove('active');
-}
+<div class="toast" id="toast">✓ Saved</div>
 
-function setStatus(s) {
-  currentStatus = s;
-  document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('sel', b.dataset.s === s));
-  document.getElementById('attach-box').classList.toggle('show', s === 'Done');
-}
-
-function reopenTicket() {
-  setStatus('Ongoing');
-  confirmStatus();
-}
-
-async function togglePriority() {
-  if (!currentTicket) return;
-  const newVal = !isTrue(currentTicket.Priority);
-  await postFlags(currentTicket.RequestID, { priority: newVal });
-  currentTicket.Priority = newVal;
-  document.getElementById('priority-btn').classList.toggle('on', newVal);
-  showToast(newVal ? '🔥 Marked priority' : 'Priority removed');
-  loadBoard();
-}
-
-async function toggleArchive() {
-  if (!currentTicket) return;
-  const newVal = !isTrue(currentTicket.Archived);
-  await postFlags(currentTicket.RequestID, { archived: newVal });
-  closeModal();
-  showToast(newVal ? '🗄 Archived' : 'Restored from archive');
-  loadBoard();
-}
-
-async function postFlags(id, flags) {
-  try {
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      body: JSON.stringify({ action: 'setFlags', id, ...flags })
-    });
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.error || 'Failed to update');
-  } catch (err) {
-    alert('Could not save — check your connection and try again.');
-    console.error(err);
-  }
-}
-
-async function confirmStatus() {
-  if (!currentTicket) return;
-  const btn = document.getElementById('confirm-btn');
-  const fileLink = document.getElementById('attach-input').value.trim();
-  const notes = document.getElementById('notes-input').value.trim();
-
-  if (currentStatus === 'Done' && !fileLink) {
-    alert('Add a file link before marking this Done — that\'s what gets sent to the requestor.');
-    return;
-  }
-
-  btn.disabled = true;
-  btn.textContent = 'Saving…';
-  try {
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'updateStatus',
-        id: currentTicket.RequestID,
-        status: currentStatus,
-        fileLink: fileLink,
-        notes: notes
-      })
-    });
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.error || 'Failed to update');
-
-    closeModal();
-    showToast(currentStatus === 'Done' ? '✓ Marked done — requestor notified' : '✓ Status updated');
-    loadBoard();
-  } catch (err) {
-    alert('Could not save — check your connection and try again.');
-    console.error(err);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Save & Notify';
-  }
-}
+<script src="api.js"></script>
+<script src="board.js"></script>
+</body>
+</html>
