@@ -65,6 +65,20 @@
 
 </div>
 
+<!-- READ-ONLY DETAIL MODAL -->
+<div class="overlay" id="status-overlay" onclick="if(event.target===this) closeStatusDetail()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeStatusDetail()">✕ close</button>
+    <div class="t-id" id="sd-id">REQ-0000</div>
+    <h3 id="sd-title">Title</h3>
+    <div class="modal-row"><span id="sd-req">Requestor</span><span id="sd-due">Due</span></div>
+    <div class="modal-brief" id="sd-brief">Brief text</div>
+    <div id="sd-ref-row" style="display:none; margin:-8px 0 16px;"></div>
+    <div id="sd-file-row" style="display:none; margin:-8px 0 16px;"></div>
+    <div id="sd-notes-row" style="display:none;"></div>
+  </div>
+</div>
+
 <script src="api.js"></script>
 <script src="request.js"></script>
 </body>
