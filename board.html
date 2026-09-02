@@ -33,25 +33,20 @@
     </div>
   </header>
 
-  <div class="board" id="board">
-    <div>
-      <div class="col-head"><span class="col-title">Pending</span><span class="col-line"></span><span class="col-count" id="count-pending">0</span></div>
-      <div id="col-pending"></div>
-    </div>
-    <div>
-      <div class="col-head"><span class="col-title">Ongoing</span><span class="col-line"></span><span class="col-count" id="count-ongoing">0</span></div>
-      <div id="col-ongoing"></div>
-    </div>
-    <div>
-      <div class="col-head"><span class="col-title">Done</span><span class="col-line"></span><span class="col-count" id="count-done">0</span></div>
-      <div id="col-done"></div>
-    </div>
-    <div>
-      <div class="col-head"><span class="col-title">Cancelled</span><span class="col-line"></span><span class="col-count" id="count-void">0</span></div>
-      <div id="col-void"></div>
-    </div>
+  <div class="stats-bar" id="stats-bar">
+    <div class="stat"><div class="stat-num" id="stat-open">0</div><div class="stat-label">Open</div></div>
+    <div class="stat"><div class="stat-num overdue" id="stat-overdue">0</div><div class="stat-label">Overdue</div></div>
+    <div class="stat"><div class="stat-num" id="stat-done-month">0</div><div class="stat-label">Done this month</div></div>
+    <div class="stat"><div class="stat-num" id="stat-avg">—</div><div class="stat-label">Avg turnaround (days)</div></div>
   </div>
-  <div id="board-empty" class="empty-msg" style="display:none;">No tickets yet.</div>
+
+  <div class="board-controls">
+    <input type="text" id="search-input" placeholder="Search by name, title, or ticket ID…">
+    <button id="archive-toggle">View archive</button>
+  </div>
+
+  <div class="board" id="board"></div>
+  <div id="board-empty" class="empty-msg" style="display:none;">Nothing here.</div>
   <div id="board-loading" class="empty-msg">Loading tickets…</div>
 
 </div>
@@ -66,6 +61,11 @@
     <div class="modal-row"><span id="m-req">Requestor</span><span id="m-due">Due</span></div>
     <div class="modal-brief" id="m-brief">Brief text</div>
     <div id="m-ref-row" style="display:none; margin:-8px 0 16px;"></div>
+
+    <div class="modal-toggles">
+      <button class="toggle-btn" id="priority-btn" onclick="togglePriority()">🔥 Priority</button>
+      <button class="toggle-btn" id="archive-btn" onclick="toggleArchive()" style="display:none;">🗄 Archive</button>
+    </div>
 
     <button class="reopen-btn" id="reopen-btn" style="display:none;" onclick="reopenTicket()">↺ Reopen — needs revision</button>
 
