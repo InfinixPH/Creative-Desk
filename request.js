@@ -33,6 +33,66 @@ async function loadPublicStats() {
 }
 loadPublicStats();
 
+// ==== STATUS LIST ====
+const STATUS_GROUPS = [
+  { status: 'Done', label: '✓ Complete / Done' },
+  { status: 'Ongoing', label: 'Ongoing' },
+  { status: 'Pending', label: 'Pending' },
+  { status: 'Cancelled', label: 'Cancelled' }
+];
+
+let statusListLoaded = false;
+
+function statusRowHTML(r) {
+  const overdue = isOverdue(r.Deadline, r.Status);
+  return `
+    <div class="status-row-item">
+      <div class="status-row-title">${escapeHTML(r.ProjectTitle)}</div>
+      <div class="status-row-meta">
+        <span>${escapeHTML(r.RequestorName)}</span>
+        <span class="status-row-id">${r.RequestID}</span>
+        <span class="${overdue ? 'status-row-overdue' : ''}">${overdue ? '⚠ ' : ''}${fmtDate(r.Deadline)}</span>
+      </div>
+    </div>`;
+}
+
+async function loadStatusList() {
+  const loadingEl = document.getElementById('status-loading');
+  const listEl = document.getElementById('status-list');
+  loadingEl.style.display = 'block';
+  listEl.innerHTML = '';
+  try {
+    const res = await fetch(`${API_URL}?action=list`);
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Failed to load');
+
+    const active = data.requests.filter(r => r.Archived !== true && r.Archived !== 'TRUE' && r.Archived !== 'true');
+
+    loadingEl.style.display = 'none';
+    listEl.innerHTML = STATUS_GROUPS.map(g => {
+      const items = active
+        .filter(r => r.Status === g.status)
+        .sort((a, b) => new Date(a.Deadline) - new Date(b.Deadline));
+      if (items.length === 0) return '';
+      return `
+        <div class="status-group">
+          <div class="status-group-title">${g.label} <span class="col-count">${items.length}</span></div>
+          ${items.map(statusRowHTML).join('')}
+        </div>`;
+    }).join('') || '<div class="empty-msg">No tickets yet.</div>';
+  } catch (err) {
+    loadingEl.textContent = 'Could not load status list.';
+    console.error(err);
+  }
+}
+
+document.querySelector('nav button[data-view="status"]').addEventListener('click', () => {
+  if (!statusListLoaded) {
+    statusListLoaded = true;
+    loadStatusList();
+  }
+});
+
 // ==== NEW REQUEST FORM ====
 document.getElementById('f-submit').addEventListener('click', async () => {
   const name = document.getElementById('f-name').value.trim();
