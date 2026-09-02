@@ -118,6 +118,19 @@ function renderReceipt(r) {
     notesHTML = `<div class="modal-brief" style="margin-top:14px;">${escapeHTML(r.Notes)}</div>`;
   }
 
+  let tipHTML = '';
+  if (r.Status === 'Done') {
+    tipHTML = `
+      <div class="tip-jar">
+        <div class="tip-title">${escapeHTML(COFFEE_TITLE)}</div>
+        <div class="tip-text">${escapeHTML(COFFEE_MESSAGE)}</div>
+        <div class="tip-details">
+          <img src="${COFFEE_QR_IMAGE}" alt="GCash QR" class="tip-qr" onerror="this.style.display='none'">
+          <div class="tip-number">GCash: <b>${escapeHTML(COFFEE_NUMBER)}</b></div>
+        </div>
+      </div>`;
+  }
+
   document.getElementById('tr-result').innerHTML = `
     <div class="receipt">
       <span class="status-pill ${col}">${pillLabel}</span>
@@ -130,5 +143,6 @@ function renderReceipt(r) {
         <div class="tl-item"><b>${fmtDate(r.Timestamp)}</b> — Ticket submitted</div>
         ${r.Status !== 'Pending' ? `<div class="tl-item"><b>${fmtDate(r.LastUpdated)}</b> — Status: ${r.Status}</div>` : ''}
       </div>
+      ${tipHTML}
     </div>`;
 }
