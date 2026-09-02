@@ -50,10 +50,12 @@ function ticketHTML(r) {
   const overdue = isOverdue(r.Deadline, r.Status);
   const deadlineLabel = overdue ? `⚠ ${fmtDate(r.Deadline)}` : fmtDate(r.Deadline);
   const flame = isTrue(r.Priority) ? '🔥 ' : '';
+  const followCount = Number(r.FollowUpCount) || 0;
+  const bell = followCount > 0 ? `<span class="followup-badge">🔔 ${followCount}</span>` : '';
   return `
     <div class="ticket" onclick="openModal('${r.RequestID}')">
       <div class="tape"></div>
-      <div class="t-id">${r.RequestID}</div>
+      <div class="t-id">${r.RequestID} ${bell}</div>
       <div class="t-title">${flame}${escapeHTML(r.ProjectTitle)}</div>
       <div class="t-meta"><span>${escapeHTML(r.RequestorName)}</span><span class="t-deadline${overdue ? ' soon' : ''}">${deadlineLabel}</span></div>
       ${stamp}
@@ -182,6 +184,16 @@ function openModal(id) {
     refRow.innerHTML = `<a href="${escapeHTML(currentTicket.ReferenceLink)}" target="_blank" class="file-link">📎 View reference →</a>`;
   } else {
     refRow.style.display = 'none';
+  }
+
+  const followRow = document.getElementById('m-follow-row');
+  const followCount = Number(currentTicket.FollowUpCount) || 0;
+  if (followCount > 0) {
+    followRow.style.display = 'block';
+    followRow.innerHTML = `🔔 Followed up ${followCount} time${followCount > 1 ? 's' : ''} — last on ${fmtDate(currentTicket.LastFollowUp)}` +
+      (currentTicket.LastFollowUpMessage ? `<br><i>"${escapeHTML(currentTicket.LastFollowUpMessage)}"</i>` : '');
+  } else {
+    followRow.style.display = 'none';
   }
 
   currentStatus = currentTicket.Status;
