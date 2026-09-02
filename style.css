@@ -136,6 +136,25 @@ nav button:not(.active):hover{ background:rgba(236,228,208,0.08); }
 }
 .stats-mini span{ color:var(--cyan); font-weight:700; }
 
+/* ---- STATUS LIST ---- */
+.status-list-wrap{ max-width:640px; margin:26px auto 0; }
+.status-group{ margin-bottom:26px; }
+.status-group-title{
+  font-family:'Anton'; font-size:15px; text-transform:uppercase; letter-spacing:1px; color:var(--cream);
+  display:flex; align-items:center; gap:10px; margin-bottom:10px; padding-bottom:8px;
+  border-bottom:1px dashed rgba(236,228,208,0.15);
+}
+.status-row-item{
+  background:rgba(255,255,255,0.03); border:1px solid rgba(236,228,208,0.1);
+  padding:12px 14px; margin-bottom:8px;
+}
+.status-row-title{ font-size:13.5px; font-weight:600; color:var(--cream); margin-bottom:6px; }
+.status-row-meta{
+  display:flex; gap:14px; font-family:'JetBrains Mono'; font-size:10.5px; color:#8a8371; flex-wrap:wrap;
+}
+.status-row-id{ color:#5b5340; }
+.status-row-overdue{ color:var(--red); font-weight:700; }
+
 /* ---- BOARD CONTROLS ---- */
 .board-controls{ display:flex; gap:10px; margin-top:20px; }
 .board-controls input{
