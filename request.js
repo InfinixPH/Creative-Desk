@@ -42,16 +42,18 @@ const STATUS_GROUPS = [
 ];
 
 let statusListLoaded = false;
+let statusListData = [];
 
 function statusRowHTML(r) {
   const overdue = isOverdue(r.Deadline, r.Status);
   return `
-    <div class="status-row-item">
+    <div class="status-row-item" onclick="openStatusDetail('${r.RequestID}')">
       <div class="status-row-title">${escapeHTML(r.ProjectTitle)}</div>
       <div class="status-row-meta">
         <span>${escapeHTML(r.RequestorName)}</span>
         <span class="status-row-id">${r.RequestID}</span>
         <span class="${overdue ? 'status-row-overdue' : ''}">${overdue ? '⚠ ' : ''}${fmtDate(r.Deadline)}</span>
+        <span class="status-row-arrow">view →</span>
       </div>
     </div>`;
 }
@@ -67,6 +69,7 @@ async function loadStatusList() {
     if (!data.ok) throw new Error(data.error || 'Failed to load');
 
     const active = data.requests.filter(r => r.Archived !== true && r.Archived !== 'TRUE' && r.Archived !== 'true');
+    statusListData = active;
 
     loadingEl.style.display = 'none';
     listEl.innerHTML = STATUS_GROUPS.map(g => {
@@ -84,6 +87,47 @@ async function loadStatusList() {
     loadingEl.textContent = 'Could not load status list.';
     console.error(err);
   }
+}
+
+function openStatusDetail(id) {
+  const r = statusListData.find(x => x.RequestID === id);
+  if (!r) return;
+
+  document.getElementById('sd-id').textContent = r.RequestID;
+  document.getElementById('sd-title').textContent = r.ProjectTitle;
+  document.getElementById('sd-req').textContent = r.RequestorName;
+  document.getElementById('sd-due').textContent = 'Due ' + fmtDate(r.Deadline);
+  document.getElementById('sd-brief').textContent = r.Brief || '(no brief provided)';
+
+  const refRow = document.getElementById('sd-ref-row');
+  if (r.ReferenceLink) {
+    refRow.style.display = 'block';
+    refRow.innerHTML = `<a href="${escapeHTML(r.ReferenceLink)}" target="_blank" class="file-link">📎 View reference →</a>`;
+  } else {
+    refRow.style.display = 'none';
+  }
+
+  const fileRow = document.getElementById('sd-file-row');
+  if (r.Status === 'Done' && r.FileLink) {
+    fileRow.style.display = 'block';
+    fileRow.innerHTML = `<a href="${escapeHTML(r.FileLink)}" target="_blank" class="file-link">📎 View final file →</a>`;
+  } else {
+    fileRow.style.display = 'none';
+  }
+
+  const notesRow = document.getElementById('sd-notes-row');
+  if (r.Notes) {
+    notesRow.style.display = 'block';
+    notesRow.innerHTML = `<div class="modal-brief">${escapeHTML(r.Notes)}</div>`;
+  } else {
+    notesRow.style.display = 'none';
+  }
+
+  document.getElementById('status-overlay').classList.add('active');
+}
+
+function closeStatusDetail() {
+  document.getElementById('status-overlay').classList.remove('active');
 }
 
 document.querySelector('nav button[data-view="status"]').addEventListener('click', () => {
@@ -194,6 +238,18 @@ function renderReceipt(r) {
       </div>`;
   }
 
+  let followUpHTML = '';
+  if (r.Status === 'Pending' || r.Status === 'Ongoing') {
+    const count = Number(r.FollowUpCount) || 0;
+    followUpHTML = `
+      <div class="followup-box">
+        ${count > 0 ? `<div class="followup-note">🔔 Followed up ${count} time${count > 1 ? 's' : ''} — last on ${fmtDate(r.LastFollowUp)}</div>` : ''}
+        <textarea id="fu-message" placeholder="Optional note for the artist (e.g. 'just checking in', 'need this sooner')..."></textarea>
+        <button id="fu-send" onclick="sendFollowUp('${r.RequestID}')">🔔 Send follow-up</button>
+        <div id="fu-result" class="result-msg"></div>
+      </div>`;
+  }
+
   document.getElementById('tr-result').innerHTML = `
     <div class="receipt">
       <span class="status-pill ${col}">${pillLabel}</span>
@@ -206,6 +262,36 @@ function renderReceipt(r) {
         <div class="tl-item"><b>${fmtDate(r.Timestamp)}</b> — Ticket submitted</div>
         ${r.Status !== 'Pending' ? `<div class="tl-item"><b>${fmtDate(r.LastUpdated)}</b> — Status: ${r.Status}</div>` : ''}
       </div>
+      ${followUpHTML}
       ${tipHTML}
     </div>`;
+}
+
+async function sendFollowUp(id) {
+  const btn = document.getElementById('fu-send');
+  const resultEl = document.getElementById('fu-result');
+  const message = document.getElementById('fu-message').value.trim();
+
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'followUp', id: id, message: message })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Failed to send');
+
+    resultEl.textContent = '✓ Follow-up sent — the artist has been notified.';
+    resultEl.className = 'result-msg ok';
+    btn.textContent = '🔔 Send follow-up';
+    btn.disabled = false;
+    document.getElementById('fu-message').value = '';
+  } catch (err) {
+    resultEl.textContent = err.message || 'Could not send — try again.';
+    resultEl.className = 'result-msg err';
+    btn.textContent = '🔔 Send follow-up';
+    btn.disabled = false;
+    console.error(err);
+  }
 }
