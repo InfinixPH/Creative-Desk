@@ -130,6 +130,12 @@ nav button:not(.active):hover{ background:rgba(236,228,208,0.08); }
 .stat-num.overdue{ color:var(--red); }
 .stat-label{ font-family:'JetBrains Mono'; font-size:10px; text-transform:uppercase; letter-spacing:1px; color:#8a8371; margin-top:4px; }
 
+.stats-mini{
+  text-align:center; font-family:'JetBrains Mono'; font-size:12px; color:#8a8371;
+  margin-top:22px; padding:10px; border:1px dashed rgba(236,228,208,0.15);
+}
+.stats-mini span{ color:var(--cyan); font-weight:700; }
+
 /* ---- BOARD CONTROLS ---- */
 .board-controls{ display:flex; gap:10px; margin-top:20px; }
 .board-controls input{
