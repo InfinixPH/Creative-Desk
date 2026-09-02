@@ -1,6 +1,13 @@
 // ==== SHARED CONFIG ====
 const API_URL = 'https://script.google.com/macros/s/AKfycbxTuZWSd0mUOrcusWsa9a3LkIxm78fI-RoFVRnhDnjwBRdSmv8WSxl3rMm2vuOky6A6tA/exec';
 
+// Tip jar — edit these anytime you want to change the number, QR image, or message.
+// To change the QR: just replace the image file in your repo with the same filename below.
+const COFFEE_NUMBER = '0917-XXX-XXXX'; // <-- your GCash number
+const COFFEE_QR_IMAGE = 'coffee-qr.png'; // <-- filename of your QR image in the repo root
+const COFFEE_TITLE = '☕ Happy with it?'; // <-- heading shown above the message
+const COFFEE_MESSAGE = "If you'd like, you can send a coffee as a token of appreciation — totally optional, but always appreciated!"; // <-- the message itself
+
 // ==== SHARED HELPERS ====
 function statusToColumn(status) {
   const map = { 'Pending': 'pending', 'Ongoing': 'ongoing', 'Done': 'done', 'Cancelled': 'void' };
