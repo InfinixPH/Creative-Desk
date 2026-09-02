@@ -20,6 +20,7 @@
     <nav>
       <button class="active" data-view="form">New Request</button>
       <button data-view="track">Track</button>
+      <button data-view="status">Status</button>
     </nav>
   </header>
 
@@ -51,6 +52,14 @@
         <button id="tr-check">Check</button>
       </div>
       <div id="tr-result"></div>
+    </div>
+  </div>
+
+  <!-- STATUS -->
+  <div class="view" id="status">
+    <div class="status-list-wrap">
+      <div id="status-loading" class="empty-msg">Loading…</div>
+      <div id="status-list"></div>
     </div>
   </div>
 
