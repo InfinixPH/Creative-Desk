@@ -8,6 +8,31 @@ document.querySelectorAll('nav button').forEach(btn => {
   });
 });
 
+// ==== PUBLIC STATS ====
+async function loadPublicStats() {
+  try {
+    const res = await fetch(`${API_URL}?action=list`);
+    const data = await res.json();
+    if (!data.ok) return;
+
+    const active = data.requests.filter(r => r.Archived !== true && r.Archived !== 'TRUE' && r.Archived !== 'true');
+    const open = active.filter(r => r.Status === 'Pending' || r.Status === 'Ongoing').length;
+
+    const now = new Date();
+    const doneThisMonth = active.filter(r => {
+      if (r.Status !== 'Done') return false;
+      const d = new Date(r.LastUpdated);
+      return !isNaN(d) && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length;
+
+    document.getElementById('sm-open').textContent = open;
+    document.getElementById('sm-done').textContent = doneThisMonth;
+  } catch (err) {
+    console.error(err);
+  }
+}
+loadPublicStats();
+
 // ==== NEW REQUEST FORM ====
 document.getElementById('f-submit').addEventListener('click', async () => {
   const name = document.getElementById('f-name').value.trim();
