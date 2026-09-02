@@ -125,7 +125,10 @@ function renderReceipt(r) {
         <div class="tip-title">${escapeHTML(COFFEE_TITLE)}</div>
         <div class="tip-text">${escapeHTML(COFFEE_MESSAGE)}</div>
         <div class="tip-details">
-          <img src="${COFFEE_QR_IMAGE}" alt="GCash QR" class="tip-qr" onerror="this.style.display='none'">
+          <a href="${COFFEE_QR_IMAGE}" target="_blank" class="tip-qr-link">
+            <img src="${COFFEE_QR_IMAGE}" alt="GCash QR" class="tip-qr" onerror="this.parentElement.style.display='none'">
+          </a>
+          <div class="tip-qr-hint">Tap the QR to view full size</div>
           <div class="tip-number">GCash: <b>${escapeHTML(COFFEE_NUMBER)}</b></div>
         </div>
       </div>`;
