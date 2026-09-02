@@ -29,6 +29,18 @@ if (sessionStorage.getItem('board-unlocked') === 'yes') {
 let allRequests = [];
 let currentTicket = null;
 let currentStatus = null;
+let showingArchive = false;
+let searchTerm = '';
+
+const COLUMNS = [
+  { key: 'pending', label: 'Pending' },
+  { key: 'ongoing', label: 'Ongoing' },
+  { key: 'done', label: 'Done' },
+  { key: 'void', label: 'Cancelled' }
+];
+
+// ==== FLAG HELPERS ====
+function isTrue(v) { return v === true || v === 'TRUE' || v === 'true'; }
 
 // ==== TICKET RENDER ====
 function ticketHTML(r) {
@@ -37,11 +49,12 @@ function ticketHTML(r) {
               : col === 'void' ? '<div class="stamp void">Void</div>' : '';
   const overdue = isOverdue(r.Deadline, r.Status);
   const deadlineLabel = overdue ? `⚠ ${fmtDate(r.Deadline)}` : fmtDate(r.Deadline);
+  const flame = isTrue(r.Priority) ? '🔥 ' : '';
   return `
     <div class="ticket" onclick="openModal('${r.RequestID}')">
       <div class="tape"></div>
       <div class="t-id">${r.RequestID}</div>
-      <div class="t-title">${escapeHTML(r.ProjectTitle)}</div>
+      <div class="t-title">${flame}${escapeHTML(r.ProjectTitle)}</div>
       <div class="t-meta"><span>${escapeHTML(r.RequestorName)}</span><span class="t-deadline${overdue ? ' soon' : ''}">${deadlineLabel}</span></div>
       ${stamp}
     </div>`;
@@ -56,6 +69,7 @@ async function loadBoard() {
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || 'Failed to load');
     allRequests = data.requests;
+    renderStats();
     renderBoard();
   } catch (err) {
     document.getElementById('board-loading').textContent = 'Could not load tickets. Refresh to try again.';
@@ -63,8 +77,42 @@ async function loadBoard() {
   }
 }
 
-function sortByDeadline(list) {
+// ==== STATS ====
+function renderStats() {
+  const active = allRequests.filter(r => !isTrue(r.Archived));
+  const open = active.filter(r => r.Status === 'Pending' || r.Status === 'Ongoing').length;
+  const overdue = active.filter(r => isOverdue(r.Deadline, r.Status)).length;
+
+  const now = new Date();
+  const doneThisMonth = active.filter(r => {
+    if (r.Status !== 'Done') return false;
+    const d = new Date(r.LastUpdated);
+    return !isNaN(d) && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+
+  const doneWithDates = active.filter(r => r.Status === 'Done' && r.Timestamp && r.LastUpdated);
+  let avgTurnaround = '—';
+  if (doneWithDates.length > 0) {
+    const totalDays = doneWithDates.reduce((sum, r) => {
+      const start = new Date(r.Timestamp), end = new Date(r.LastUpdated);
+      if (isNaN(start) || isNaN(end)) return sum;
+      return sum + Math.max(0, (end - start) / (1000 * 60 * 60 * 24));
+    }, 0);
+    avgTurnaround = (totalDays / doneWithDates.length).toFixed(1);
+  }
+
+  document.getElementById('stat-open').textContent = open;
+  document.getElementById('stat-overdue').textContent = overdue;
+  document.getElementById('stat-done-month').textContent = doneThisMonth;
+  document.getElementById('stat-avg').textContent = avgTurnaround;
+}
+
+// ==== SORT ====
+function sortTickets(list) {
   return list.slice().sort((a, b) => {
+    const pa = isTrue(a.Priority) ? 0 : 1;
+    const pb = isTrue(b.Priority) ? 0 : 1;
+    if (pa !== pb) return pa - pb;
     const da = new Date(a.Deadline), db = new Date(b.Deadline);
     const va = isNaN(da) ? Infinity : da.getTime();
     const vb = isNaN(db) ? Infinity : db.getTime();
@@ -72,19 +120,50 @@ function sortByDeadline(list) {
   });
 }
 
+// ==== FILTER ====
+function matchesSearch(r) {
+  if (!searchTerm) return true;
+  const t = searchTerm.toLowerCase();
+  return (r.RequestorName || '').toLowerCase().includes(t) ||
+         (r.ProjectTitle || '').toLowerCase().includes(t) ||
+         (r.RequestID || '').toLowerCase().includes(t);
+}
+
+// ==== RENDER BOARD (dynamic columns) ====
 function renderBoard() {
   document.getElementById('board-loading').style.display = 'none';
-  const cols = { pending: [], ongoing: [], done: [], void: [] };
-  allRequests.forEach(r => cols[statusToColumn(r.Status)].push(r));
-  ['pending', 'ongoing', 'done'].forEach(c => cols[c] = sortByDeadline(cols[c]));
 
-  ['pending', 'ongoing', 'done', 'void'].forEach(c => {
-    document.getElementById(`col-${c}`).innerHTML = cols[c].map(ticketHTML).join('');
-    document.getElementById(`count-${c}`).textContent = cols[c].length;
+  const pool = allRequests.filter(r => isTrue(r.Archived) === showingArchive).filter(matchesSearch);
+
+  const boardEl = document.getElementById('board');
+  boardEl.innerHTML = COLUMNS.map(c => `
+    <div>
+      <div class="col-head"><span class="col-title">${c.label}</span><span class="col-line"></span><span class="col-count" id="count-${c.key}">0</span></div>
+      <div id="col-${c.key}"></div>
+    </div>`).join('');
+
+  COLUMNS.forEach(c => {
+    const list = sortTickets(pool.filter(r => statusToColumn(r.Status) === c.key));
+    document.getElementById(`col-${c.key}`).innerHTML = list.map(ticketHTML).join('');
+    document.getElementById(`count-${c.key}`).textContent = list.length;
   });
 
-  document.getElementById('board-empty').style.display = allRequests.length === 0 ? 'block' : 'none';
+  document.getElementById('board-empty').style.display = pool.length === 0 ? 'block' : 'none';
+  document.getElementById('board-empty').textContent = showingArchive ? 'Nothing archived yet.' : 'No tickets yet.';
 }
+
+// ==== SEARCH ====
+document.getElementById('search-input').addEventListener('input', (e) => {
+  searchTerm = e.target.value.trim();
+  renderBoard();
+});
+
+// ==== ARCHIVE TOGGLE (view) ====
+document.getElementById('archive-toggle').addEventListener('click', () => {
+  showingArchive = !showingArchive;
+  document.getElementById('archive-toggle').textContent = showingArchive ? 'Back to board' : 'View archive';
+  renderBoard();
+});
 
 // ==== MODAL ====
 function openModal(id) {
@@ -112,6 +191,14 @@ function openModal(id) {
   document.getElementById('notes-input').value = currentTicket.Notes || '';
   document.getElementById('reopen-btn').style.display = currentTicket.Status === 'Done' ? 'block' : 'none';
 
+  const priorityBtn = document.getElementById('priority-btn');
+  priorityBtn.classList.toggle('on', isTrue(currentTicket.Priority));
+
+  const archiveBtn = document.getElementById('archive-btn');
+  const canArchive = currentTicket.Status === 'Done' || currentTicket.Status === 'Cancelled';
+  archiveBtn.style.display = canArchive ? 'inline-block' : 'none';
+  archiveBtn.textContent = isTrue(currentTicket.Archived) ? '🗄 Unarchive' : '🗄 Archive';
+
   document.getElementById('overlay').classList.add('active');
 }
 
@@ -128,6 +215,39 @@ function setStatus(s) {
 function reopenTicket() {
   setStatus('Ongoing');
   confirmStatus();
+}
+
+async function togglePriority() {
+  if (!currentTicket) return;
+  const newVal = !isTrue(currentTicket.Priority);
+  await postFlags(currentTicket.RequestID, { priority: newVal });
+  currentTicket.Priority = newVal;
+  document.getElementById('priority-btn').classList.toggle('on', newVal);
+  showToast(newVal ? '🔥 Marked priority' : 'Priority removed');
+  loadBoard();
+}
+
+async function toggleArchive() {
+  if (!currentTicket) return;
+  const newVal = !isTrue(currentTicket.Archived);
+  await postFlags(currentTicket.RequestID, { archived: newVal });
+  closeModal();
+  showToast(newVal ? '🗄 Archived' : 'Restored from archive');
+  loadBoard();
+}
+
+async function postFlags(id, flags) {
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'setFlags', id, ...flags })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Failed to update');
+  } catch (err) {
+    alert('Could not save — check your connection and try again.');
+    console.error(err);
+  }
 }
 
 async function confirmStatus() {
