@@ -62,6 +62,7 @@
     <div class="modal-brief" id="m-brief">Brief text</div>
     <div id="m-ref-row" style="display:none; margin:-8px 0 16px;"></div>
     <div id="m-follow-row" class="followup-modal-note" style="display:none;"></div>
+    <div id="m-revision-row" class="revision-modal-note" style="display:none;"></div>
 
     <div class="modal-toggles">
       <button class="toggle-btn" id="priority-btn" onclick="togglePriority()">🔥 Priority</button>
@@ -73,6 +74,7 @@
     <div class="status-row">
       <button class="status-btn" data-s="Pending" onclick="setStatus('Pending')">Pending</button>
       <button class="status-btn" data-s="Ongoing" onclick="setStatus('Ongoing')">Ongoing</button>
+      <button class="status-btn" data-s="For Review" onclick="setStatus('For Review')">For Review</button>
       <button class="status-btn" data-s="Done" onclick="setStatus('Done')">Done</button>
       <button class="status-btn" data-s="Cancelled" onclick="setStatus('Cancelled')">Cancel</button>
     </div>
