@@ -35,6 +35,7 @@ let searchTerm = '';
 const COLUMNS = [
   { key: 'pending', label: 'Pending' },
   { key: 'ongoing', label: 'Ongoing' },
+  { key: 'review', label: 'For Review' },
   { key: 'done', label: 'Done' },
   { key: 'void', label: 'Cancelled' }
 ];
@@ -46,16 +47,19 @@ function isTrue(v) { return v === true || v === 'TRUE' || v === 'true'; }
 function ticketHTML(r) {
   const col = statusToColumn(r.Status);
   const stamp = col === 'done' ? '<div class="stamp done">Done</div>'
-              : col === 'void' ? '<div class="stamp void">Void</div>' : '';
+              : col === 'void' ? '<div class="stamp void">Void</div>'
+              : col === 'review' ? '<div class="stamp review">Review</div>' : '';
   const overdue = isOverdue(r.Deadline, r.Status);
   const deadlineLabel = overdue ? `⚠ ${fmtDate(r.Deadline)}` : fmtDate(r.Deadline);
   const flame = isTrue(r.Priority) ? '🔥 ' : '';
   const followCount = Number(r.FollowUpCount) || 0;
   const bell = followCount > 0 ? `<span class="followup-badge">🔔 ${followCount}</span>` : '';
+  const revisionCount = Number(r.RevisionCount) || 0;
+  const revBadge = revisionCount > 0 ? `<span class="revision-badge">↺ ${revisionCount}</span>` : '';
   return `
     <div class="ticket" onclick="openModal('${r.RequestID}')">
       <div class="tape"></div>
-      <div class="t-id">${r.RequestID} ${bell}</div>
+      <div class="t-id">${r.RequestID} ${bell}${revBadge}</div>
       <div class="t-title">${flame}${escapeHTML(r.ProjectTitle)}</div>
       <div class="t-meta"><span>${escapeHTML(r.RequestorName)}</span><span class="t-deadline${overdue ? ' soon' : ''}">${deadlineLabel}</span></div>
       ${stamp}
@@ -196,9 +200,19 @@ function openModal(id) {
     followRow.style.display = 'none';
   }
 
+  const revisionRow = document.getElementById('m-revision-row');
+  const revisionCount = Number(currentTicket.RevisionCount) || 0;
+  if (revisionCount > 0) {
+    revisionRow.style.display = 'block';
+    revisionRow.innerHTML = `↺ Revised ${revisionCount} time${revisionCount > 1 ? 's' : ''}` +
+      (currentTicket.RevisionNotes ? `<br><i>"${escapeHTML(currentTicket.RevisionNotes)}"</i>` : '');
+  } else {
+    revisionRow.style.display = 'none';
+  }
+
   currentStatus = currentTicket.Status;
   document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('sel', b.dataset.s === currentStatus));
-  document.getElementById('attach-box').classList.toggle('show', currentStatus === 'Done');
+  document.getElementById('attach-box').classList.toggle('show', currentStatus === 'Done' || currentStatus === 'For Review');
   document.getElementById('attach-input').value = currentTicket.FileLink || '';
   document.getElementById('notes-input').value = currentTicket.Notes || '';
   document.getElementById('reopen-btn').style.display = currentTicket.Status === 'Done' ? 'block' : 'none';
@@ -221,7 +235,7 @@ function closeModal() {
 function setStatus(s) {
   currentStatus = s;
   document.querySelectorAll('.status-btn').forEach(b => b.classList.toggle('sel', b.dataset.s === s));
-  document.getElementById('attach-box').classList.toggle('show', s === 'Done');
+  document.getElementById('attach-box').classList.toggle('show', s === 'Done' || s === 'For Review');
 }
 
 function reopenTicket() {
@@ -268,8 +282,8 @@ async function confirmStatus() {
   const fileLink = document.getElementById('attach-input').value.trim();
   const notes = document.getElementById('notes-input').value.trim();
 
-  if (currentStatus === 'Done' && !fileLink) {
-    alert('Add a file link before marking this Done — that\'s what gets sent to the requestor.');
+  if ((currentStatus === 'Done' || currentStatus === 'For Review') && !fileLink) {
+    alert('Add a file link first — that\'s what gets sent to the requestor.');
     return;
   }
 
@@ -290,7 +304,10 @@ async function confirmStatus() {
     if (!data.ok) throw new Error(data.error || 'Failed to update');
 
     closeModal();
-    showToast(currentStatus === 'Done' ? '✓ Marked done — requestor notified' : '✓ Status updated');
+    const msg = currentStatus === 'Done' ? '✓ Marked done — requestor notified'
+              : currentStatus === 'For Review' ? '✓ Sent for review — requestor notified'
+              : '✓ Status updated';
+    showToast(msg);
     loadBoard();
   } catch (err) {
     alert('Could not save — check your connection and try again.');
