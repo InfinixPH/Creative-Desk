@@ -65,9 +65,13 @@ nav button:not(.active):hover{ background:rgba(236,228,208,0.08); }
   cursor:pointer;
   box-shadow: 0 6px 14px rgba(0,0,0,0.35);
   transition: transform .15s ease, box-shadow .15s ease;
+  transform: rotate(var(--rot, -0.5deg));
+  animation: ticketDrop 0.3s ease both;
 }
-.ticket:nth-child(odd){ transform: rotate(-0.6deg); }
-.ticket:nth-child(even){ transform: rotate(0.7deg); }
+@keyframes ticketDrop{
+  0%{ opacity:0; transform: translateY(-14px) rotate(var(--rot, -0.5deg)); }
+  100%{ opacity:1; transform: translateY(0) rotate(var(--rot, -0.5deg)); }
+}
 .ticket:hover{ transform: rotate(0deg) translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.45); }
 .ticket::before, .ticket::after{
   content:''; position:absolute; width:9px; height:9px; border-color:var(--ink-dim); opacity:0.55;
@@ -88,6 +92,12 @@ nav button:not(.active):hover{ background:rgba(236,228,208,0.08); }
   position:absolute; top:38%; left:50%; transform:translate(-50%,-50%) rotate(-14deg);
   font-family:'Anton'; letter-spacing:2px; text-transform:uppercase;
   padding:6px 14px; border:3px solid; border-radius:6px; opacity:0.82; pointer-events:none;
+  animation: stampSlam 0.4s cubic-bezier(.36,1.8,.4,1) both;
+}
+@keyframes stampSlam{
+  0%{ transform: translate(-50%,-50%) rotate(-14deg) scale(2.4); opacity:0; }
+  55%{ transform: translate(-50%,-50%) rotate(-11deg) scale(0.9); opacity:1; }
+  100%{ transform: translate(-50%,-50%) rotate(-14deg) scale(1); opacity:0.82; }
 }
 .stamp.done{ color:var(--green); border-color:var(--green); font-size:20px;}
 .stamp.void{ color:var(--red); border-color:var(--red); font-size:20px;}
@@ -99,6 +109,11 @@ nav button:not(.active):hover{ background:rgba(236,228,208,0.08); }
 .modal{
   background:var(--paper); color:var(--ink); max-width:460px; width:100%; padding:26px; position:relative;
   box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  animation: modalPop 0.2s cubic-bezier(.34,1.4,.64,1) both;
+}
+@keyframes modalPop{
+  0%{ opacity:0; transform: scale(0.92) translateY(8px); }
+  100%{ opacity:1; transform: scale(1) translateY(0); }
 }
 .modal::before, .modal::after{content:''; position:absolute; width:12px; height:12px; border-color:var(--ink-dim); opacity:0.5;}
 .modal::before{top:8px; left:8px; border-top:2px solid; border-left:2px solid;}
@@ -257,6 +272,16 @@ textarea{min-height:80px; resize:vertical;}
   font-family:'JetBrains Mono'; font-size:11.5px; letter-spacing:0.5px; text-transform:uppercase; cursor:pointer;
 }
 .review-revise-submit:hover{ opacity:0.85; }
+
+/* ---- CONFETTI ---- */
+.confetti-piece{
+  position: fixed; top: -20px; width: 8px; height: 14px; opacity: 0.95; z-index: 300; pointer-events: none;
+  animation: confettiFall 1.4s ease-in forwards; border-radius: 1px;
+}
+@keyframes confettiFall{
+  0%{ transform: translateY(0) rotate(0deg); opacity:1; }
+  100%{ transform: translateY(100vh) rotate(720deg); opacity:0; }
+}
 
 .tip-jar{
   margin-top:20px; padding-top:18px; border-top:1px dashed rgba(33,29,22,0.3); text-align:center;
