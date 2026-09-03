@@ -57,7 +57,7 @@ function ticketHTML(r) {
   const revisionCount = Number(r.RevisionCount) || 0;
   const revBadge = revisionCount > 0 ? `<span class="revision-badge">↺ ${revisionCount}</span>` : '';
   return `
-    <div class="ticket" onclick="openModal('${r.RequestID}')">
+    <div class="ticket" data-request-id="${escapeHTML(r.RequestID)}">
       <div class="tape"></div>
       <div class="t-id">${r.RequestID} ${bell}${revBadge}</div>
       <div class="t-title">${flame}${escapeHTML(r.ProjectTitle)}</div>
@@ -157,6 +157,13 @@ function renderBoard() {
   document.getElementById('board-empty').style.display = pool.length === 0 ? 'block' : 'none';
   document.getElementById('board-empty').textContent = showingArchive ? 'Nothing archived yet.' : 'No tickets yet.';
 }
+
+document.getElementById('board').addEventListener('click', (e) => {
+  const card = e.target.closest('.ticket');
+  if (card && card.dataset.requestId) {
+    openModal(card.dataset.requestId);
+  }
+});
 
 // ==== SEARCH ====
 document.getElementById('search-input').addEventListener('input', (e) => {
