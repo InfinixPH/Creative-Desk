@@ -11,8 +11,7 @@ document.querySelectorAll('nav button').forEach(btn => {
 // ==== PUBLIC STATS ====
 async function loadPublicStats() {
   try {
-    const res = await fetch(`${API_URL}?action=list`);
-    const data = await res.json();
+    const data = await fetchRequestList();
     if (!data.ok) return;
 
     const active = data.requests.filter(r => r.Archived !== true && r.Archived !== 'TRUE' && r.Archived !== 'true');
@@ -45,14 +44,16 @@ const STATUS_GROUPS = [
 let statusListLoaded = false;
 let statusListData = [];
 
-function statusTicketHTML(r) {
+function statusTicketHTML(r, i) {
   const overdue = isOverdue(r.Deadline, r.Status);
   const deadlineLabel = overdue ? `⚠ ${fmtDate(r.Deadline)}` : fmtDate(r.Deadline);
   const stamp = r.Status === 'Done' ? '<div class="stamp done">Done</div>'
               : r.Status === 'Cancelled' ? '<div class="stamp void">Void</div>'
               : r.Status === 'For Review' ? '<div class="stamp review">Review</div>' : '';
+  const rot = (i % 2 === 0) ? '-0.6deg' : '0.7deg';
+  const delay = Math.min((i || 0) * 0.04, 0.3);
   return `
-    <div class="ticket" data-request-id="${escapeHTML(r.RequestID)}">
+    <div class="ticket" data-request-id="${escapeHTML(r.RequestID)}" style="--rot:${rot}; animation-delay:${delay}s;">
       <div class="tape"></div>
       <div class="t-id">${r.RequestID}</div>
       <div class="t-title">${escapeHTML(r.ProjectTitle)}</div>
@@ -61,14 +62,16 @@ function statusTicketHTML(r) {
     </div>`;
 }
 
+const STATUS_LOADING_MESSAGES = ['Pulling the job tickets…', 'Checking the corkboard…', 'Sorting by status…'];
+
 async function loadStatusList() {
   const loadingEl = document.getElementById('status-loading');
   const boardEl = document.getElementById('status-board');
+  loadingEl.textContent = randomLoadingMessage(STATUS_LOADING_MESSAGES);
   loadingEl.style.display = 'block';
   boardEl.innerHTML = '';
   try {
-    const res = await fetch(`${API_URL}?action=list`);
-    const data = await res.json();
+    const data = await fetchRequestList();
     if (!data.ok) throw new Error(data.error || 'Failed to load');
 
     const active = data.requests.filter(r => r.Archived !== true && r.Archived !== 'TRUE' && r.Archived !== 'true');
@@ -204,7 +207,7 @@ document.getElementById('tr-check').addEventListener('click', async () => {
   const resultEl = document.getElementById('tr-result');
   if (!id) return;
 
-  resultEl.innerHTML = '<div class="empty-msg">Checking…</div>';
+  resultEl.innerHTML = '<div class="empty-msg">Pulling your ticket…</div>';
   try {
     const res = await fetch(`${API_URL}?action=get&id=${encodeURIComponent(id)}`);
     const data = await res.json();
@@ -297,6 +300,20 @@ function renderReceipt(r) {
     </div>`;
 }
 
+function spawnConfetti() {
+  const colors = ['#8b6cff', '#ff2f7e', '#16d1c9', '#2fa84f', '#d3c6a6'];
+  for (let i = 0; i < 26; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.left = (Math.random() * 100) + 'vw';
+    el.style.background = colors[Math.floor(Math.random() * colors.length)];
+    el.style.animationDelay = (Math.random() * 0.25) + 's';
+    el.style.animationDuration = (1.1 + Math.random() * 0.7) + 's';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2200);
+  }
+}
+
 function toggleReviseForm() {
   document.getElementById('revise-form').style.display = 'block';
 }
@@ -319,6 +336,8 @@ async function submitReview(id, decision) {
       ? '✓ Approved! Thanks for confirming.'
       : '✓ Revision requested — the artist has been notified.';
     resultEl.className = 'result-msg ok';
+
+    if (decision === 'approve') spawnConfetti();
 
     setTimeout(() => {
       const idInput = document.getElementById('tr-id');
