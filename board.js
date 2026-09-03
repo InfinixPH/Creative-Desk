@@ -44,7 +44,7 @@ const COLUMNS = [
 function isTrue(v) { return v === true || v === 'TRUE' || v === 'true'; }
 
 // ==== TICKET RENDER ====
-function ticketHTML(r) {
+function ticketHTML(r, i) {
   const col = statusToColumn(r.Status);
   const stamp = col === 'done' ? '<div class="stamp done">Done</div>'
               : col === 'void' ? '<div class="stamp void">Void</div>'
@@ -56,8 +56,10 @@ function ticketHTML(r) {
   const bell = followCount > 0 ? `<span class="followup-badge">🔔 ${followCount}</span>` : '';
   const revisionCount = Number(r.RevisionCount) || 0;
   const revBadge = revisionCount > 0 ? `<span class="revision-badge">↺ ${revisionCount}</span>` : '';
+  const rot = (i % 2 === 0) ? '-0.6deg' : '0.7deg';
+  const delay = Math.min((i || 0) * 0.04, 0.3);
   return `
-    <div class="ticket" data-request-id="${escapeHTML(r.RequestID)}">
+    <div class="ticket" data-request-id="${escapeHTML(r.RequestID)}" style="--rot:${rot}; animation-delay:${delay}s;">
       <div class="tape"></div>
       <div class="t-id">${r.RequestID} ${bell}${revBadge}</div>
       <div class="t-title">${flame}${escapeHTML(r.ProjectTitle)}</div>
@@ -67,18 +69,21 @@ function ticketHTML(r) {
 }
 
 // ==== LOAD BOARD ====
+const BOARD_LOADING_MESSAGES = ['Sorting the inbox tray…', 'Dusting off the ledger…', 'Flipping through job tickets…', 'Stamping in progress…'];
+
 async function loadBoard() {
-  document.getElementById('board-loading').style.display = 'block';
+  const loadingEl = document.getElementById('board-loading');
+  loadingEl.textContent = randomLoadingMessage(BOARD_LOADING_MESSAGES);
+  loadingEl.style.display = 'block';
   document.getElementById('board-empty').style.display = 'none';
   try {
-    const res = await fetch(`${API_URL}?action=list`);
-    const data = await res.json();
+    const data = await fetchRequestList(true);
     if (!data.ok) throw new Error(data.error || 'Failed to load');
     allRequests = data.requests;
     renderStats();
     renderBoard();
   } catch (err) {
-    document.getElementById('board-loading').textContent = 'Could not load tickets. Refresh to try again.';
+    loadingEl.textContent = 'Could not load tickets. Refresh to try again.';
     console.error(err);
   }
 }
