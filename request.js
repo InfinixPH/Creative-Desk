@@ -35,9 +35,10 @@ loadPublicStats();
 
 // ==== STATUS LIST ====
 const STATUS_GROUPS = [
-  { status: 'Done', label: '✓ Complete / Done' },
+  { status: 'For Review', label: '👀 For Review' },
   { status: 'Ongoing', label: 'Ongoing' },
   { status: 'Pending', label: 'Pending' },
+  { status: 'Done', label: '✓ Complete / Done' },
   { status: 'Cancelled', label: 'Cancelled' }
 ];
 
@@ -76,13 +77,12 @@ async function loadStatusList() {
       const items = active
         .filter(r => r.Status === g.status)
         .sort((a, b) => new Date(a.Deadline) - new Date(b.Deadline));
-      if (items.length === 0) return '';
       return `
         <div class="status-group">
           <div class="status-group-title">${g.label} <span class="col-count">${items.length}</span></div>
-          ${items.map(statusRowHTML).join('')}
+          ${items.length > 0 ? items.map(statusRowHTML).join('') : '<div class="status-group-empty">Nothing here right now.</div>'}
         </div>`;
-    }).join('') || '<div class="empty-msg">No tickets yet.</div>';
+    }).join('');
   } catch (err) {
     loadingEl.textContent = 'Could not load status list.';
     console.error(err);
@@ -108,9 +108,9 @@ function openStatusDetail(id) {
   }
 
   const fileRow = document.getElementById('sd-file-row');
-  if (r.Status === 'Done' && r.FileLink) {
+  if ((r.Status === 'Done' || r.Status === 'For Review') && r.FileLink) {
     fileRow.style.display = 'block';
-    fileRow.innerHTML = `<a href="${escapeHTML(r.FileLink)}" target="_blank" class="file-link">📎 View final file →</a>`;
+    fileRow.innerHTML = `<a href="${escapeHTML(r.FileLink)}" target="_blank" class="file-link">📎 View ${r.Status === 'For Review' ? 'the work' : 'final file'} →</a>`;
   } else {
     fileRow.style.display = 'none';
   }
@@ -210,16 +210,33 @@ document.getElementById('tr-check').addEventListener('click', async () => {
 function renderReceipt(r) {
   const col = statusToColumn(r.Status);
   const overdue = isOverdue(r.Deadline, r.Status);
-  const pillLabel = { pending: 'Pending', ongoing: 'Ongoing', done: '✓ Done', void: 'Cancelled' }[col];
+  const pillLabel = { pending: 'Pending', ongoing: 'Ongoing', review: 'For Review', done: '✓ Done', void: 'Cancelled' }[col];
 
   let fileLinkHTML = '';
-  if (r.Status === 'Done' && r.FileLink) {
-    fileLinkHTML = `<a href="${escapeHTML(r.FileLink)}" target="_blank" class="file-link">📎 View final file →</a>`;
+  if ((r.Status === 'Done' || r.Status === 'For Review') && r.FileLink) {
+    fileLinkHTML = `<a href="${escapeHTML(r.FileLink)}" target="_blank" class="file-link">📎 View ${r.Status === 'For Review' ? 'the work' : 'final file'} →</a>`;
   }
 
   let notesHTML = '';
   if (r.Notes) {
     notesHTML = `<div class="modal-brief" style="margin-top:14px;">${escapeHTML(r.Notes)}</div>`;
+  }
+
+  let reviewHTML = '';
+  if (r.Status === 'For Review') {
+    reviewHTML = `
+      <div class="review-box">
+        <div class="review-prompt">Take a look — are you happy with this?</div>
+        <div class="review-buttons">
+          <button class="review-approve" onclick="submitReview('${r.RequestID}', 'approve')">✓ Approve</button>
+          <button class="review-revise" onclick="toggleReviseForm()">↺ Request Revision</button>
+        </div>
+        <div id="revise-form" class="revise-form" style="display:none;">
+          <textarea id="revise-feedback" placeholder="What would you like changed? (optional)"></textarea>
+          <button class="review-revise-submit" onclick="submitReview('${r.RequestID}', 'revise')">Send Revision Request</button>
+        </div>
+        <div id="review-result" class="result-msg"></div>
+      </div>`;
   }
 
   let tipHTML = '';
@@ -262,9 +279,45 @@ function renderReceipt(r) {
         <div class="tl-item"><b>${fmtDate(r.Timestamp)}</b> — Ticket submitted</div>
         ${r.Status !== 'Pending' ? `<div class="tl-item"><b>${fmtDate(r.LastUpdated)}</b> — Status: ${r.Status}</div>` : ''}
       </div>
+      ${reviewHTML}
       ${followUpHTML}
       ${tipHTML}
     </div>`;
+}
+
+function toggleReviseForm() {
+  document.getElementById('revise-form').style.display = 'block';
+}
+
+async function submitReview(id, decision) {
+  const resultEl = document.getElementById('review-result');
+  const feedback = decision === 'revise' ? document.getElementById('revise-feedback').value.trim() : '';
+
+  resultEl.textContent = 'Sending…';
+  resultEl.className = 'result-msg';
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'requestorReview', id: id, decision: decision, feedback: feedback })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Failed to submit');
+
+    resultEl.textContent = decision === 'approve'
+      ? '✓ Approved! Thanks for confirming.'
+      : '✓ Revision requested — the artist has been notified.';
+    resultEl.className = 'result-msg ok';
+
+    setTimeout(() => {
+      const idInput = document.getElementById('tr-id');
+      idInput.value = id;
+      document.getElementById('tr-check').click();
+    }, 1200);
+  } catch (err) {
+    resultEl.textContent = err.message || 'Could not submit — try again.';
+    resultEl.className = 'result-msg err';
+    console.error(err);
+  }
 }
 
 async function sendFollowUp(id) {
