@@ -52,7 +52,7 @@ function statusTicketHTML(r) {
               : r.Status === 'Cancelled' ? '<div class="stamp void">Void</div>'
               : r.Status === 'For Review' ? '<div class="stamp review">Review</div>' : '';
   return `
-    <div class="ticket" onclick="openStatusDetail('${r.RequestID}')">
+    <div class="ticket" data-request-id="${escapeHTML(r.RequestID)}">
       <div class="tape"></div>
       <div class="t-id">${r.RequestID}</div>
       <div class="t-title">${escapeHTML(r.ProjectTitle)}</div>
@@ -134,6 +134,13 @@ function openStatusDetail(id) {
 function closeStatusDetail() {
   document.getElementById('status-overlay').classList.remove('active');
 }
+
+document.getElementById('status-board').addEventListener('click', (e) => {
+  const card = e.target.closest('.ticket');
+  if (card && card.dataset.requestId) {
+    openStatusDetail(card.dataset.requestId);
+  }
+});
 
 document.querySelector('nav button[data-view="status"]').addEventListener('click', () => {
   if (!statusListLoaded) {
