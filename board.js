@@ -185,7 +185,7 @@ function openModal(id) {
   const refRow = document.getElementById('m-ref-row');
   if (currentTicket.ReferenceLink) {
     refRow.style.display = 'block';
-    refRow.innerHTML = `<a href="${escapeHTML(currentTicket.ReferenceLink)}" target="_blank" class="file-link">📎 View reference →</a>`;
+    refRow.innerHTML = `<a href="${escapeHTML(normalizeUrl(currentTicket.ReferenceLink))}" target="_blank" class="file-link">📎 View reference →</a>`;
   } else {
     refRow.style.display = 'none';
   }
