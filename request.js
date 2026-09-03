@@ -35,35 +35,37 @@ loadPublicStats();
 
 // ==== STATUS LIST ====
 const STATUS_GROUPS = [
-  { status: 'For Review', label: '👀 For Review' },
-  { status: 'Ongoing', label: 'Ongoing' },
-  { status: 'Pending', label: 'Pending' },
-  { status: 'Done', label: '✓ Complete / Done' },
-  { status: 'Cancelled', label: 'Cancelled' }
+  { key: 'pending', status: 'Pending', label: 'Pending' },
+  { key: 'ongoing', status: 'Ongoing', label: 'Ongoing' },
+  { key: 'review', status: 'For Review', label: 'For Review' },
+  { key: 'done', status: 'Done', label: 'Done' },
+  { key: 'void', status: 'Cancelled', label: 'Cancelled' }
 ];
 
 let statusListLoaded = false;
 let statusListData = [];
 
-function statusRowHTML(r) {
+function statusTicketHTML(r) {
   const overdue = isOverdue(r.Deadline, r.Status);
+  const deadlineLabel = overdue ? `⚠ ${fmtDate(r.Deadline)}` : fmtDate(r.Deadline);
+  const stamp = r.Status === 'Done' ? '<div class="stamp done">Done</div>'
+              : r.Status === 'Cancelled' ? '<div class="stamp void">Void</div>'
+              : r.Status === 'For Review' ? '<div class="stamp review">Review</div>' : '';
   return `
-    <div class="status-row-item" onclick="openStatusDetail('${r.RequestID}')">
-      <div class="status-row-title">${escapeHTML(r.ProjectTitle)}</div>
-      <div class="status-row-meta">
-        <span>${escapeHTML(r.RequestorName)}</span>
-        <span class="status-row-id">${r.RequestID}</span>
-        <span class="${overdue ? 'status-row-overdue' : ''}">${overdue ? '⚠ ' : ''}${fmtDate(r.Deadline)}</span>
-        <span class="status-row-arrow">view →</span>
-      </div>
+    <div class="ticket" onclick="openStatusDetail('${r.RequestID}')">
+      <div class="tape"></div>
+      <div class="t-id">${r.RequestID}</div>
+      <div class="t-title">${escapeHTML(r.ProjectTitle)}</div>
+      <div class="t-meta"><span>${escapeHTML(r.RequestorName)}</span><span class="t-deadline${overdue ? ' soon' : ''}">${deadlineLabel}</span></div>
+      ${stamp}
     </div>`;
 }
 
 async function loadStatusList() {
   const loadingEl = document.getElementById('status-loading');
-  const listEl = document.getElementById('status-list');
+  const boardEl = document.getElementById('status-board');
   loadingEl.style.display = 'block';
-  listEl.innerHTML = '';
+  boardEl.innerHTML = '';
   try {
     const res = await fetch(`${API_URL}?action=list`);
     const data = await res.json();
@@ -73,16 +75,19 @@ async function loadStatusList() {
     statusListData = active;
 
     loadingEl.style.display = 'none';
-    listEl.innerHTML = STATUS_GROUPS.map(g => {
+    boardEl.innerHTML = STATUS_GROUPS.map(g => `
+      <div>
+        <div class="col-head"><span class="col-title">${g.label}</span><span class="col-line"></span><span class="col-count" id="sc-${g.key}">0</span></div>
+        <div id="scol-${g.key}"></div>
+      </div>`).join('');
+
+    STATUS_GROUPS.forEach(g => {
       const items = active
         .filter(r => r.Status === g.status)
         .sort((a, b) => new Date(a.Deadline) - new Date(b.Deadline));
-      return `
-        <div class="status-group">
-          <div class="status-group-title">${g.label} <span class="col-count">${items.length}</span></div>
-          ${items.length > 0 ? items.map(statusRowHTML).join('') : '<div class="status-group-empty">Nothing here right now.</div>'}
-        </div>`;
-    }).join('');
+      document.getElementById(`scol-${g.key}`).innerHTML = items.map(statusTicketHTML).join('');
+      document.getElementById(`sc-${g.key}`).textContent = items.length;
+    });
   } catch (err) {
     loadingEl.textContent = 'Could not load status list.';
     console.error(err);
@@ -102,7 +107,7 @@ function openStatusDetail(id) {
   const refRow = document.getElementById('sd-ref-row');
   if (r.ReferenceLink) {
     refRow.style.display = 'block';
-    refRow.innerHTML = `<a href="${escapeHTML(r.ReferenceLink)}" target="_blank" class="file-link">📎 View reference →</a>`;
+    refRow.innerHTML = `<a href="${escapeHTML(normalizeUrl(r.ReferenceLink))}" target="_blank" class="file-link">📎 View reference →</a>`;
   } else {
     refRow.style.display = 'none';
   }
@@ -110,7 +115,7 @@ function openStatusDetail(id) {
   const fileRow = document.getElementById('sd-file-row');
   if ((r.Status === 'Done' || r.Status === 'For Review') && r.FileLink) {
     fileRow.style.display = 'block';
-    fileRow.innerHTML = `<a href="${escapeHTML(r.FileLink)}" target="_blank" class="file-link">📎 View ${r.Status === 'For Review' ? 'the work' : 'final file'} →</a>`;
+    fileRow.innerHTML = `<a href="${escapeHTML(normalizeUrl(r.FileLink))}" target="_blank" class="file-link">📎 View ${r.Status === 'For Review' ? 'the work' : 'final file'} →</a>`;
   } else {
     fileRow.style.display = 'none';
   }
@@ -214,7 +219,7 @@ function renderReceipt(r) {
 
   let fileLinkHTML = '';
   if ((r.Status === 'Done' || r.Status === 'For Review') && r.FileLink) {
-    fileLinkHTML = `<a href="${escapeHTML(r.FileLink)}" target="_blank" class="file-link">📎 View ${r.Status === 'For Review' ? 'the work' : 'final file'} →</a>`;
+    fileLinkHTML = `<a href="${escapeHTML(normalizeUrl(r.FileLink))}" target="_blank" class="file-link">📎 View ${r.Status === 'For Review' ? 'the work' : 'final file'} →</a>`;
   }
 
   let notesHTML = '';
