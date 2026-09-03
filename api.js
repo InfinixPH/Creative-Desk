@@ -43,6 +43,48 @@ function normalizeUrl(url) {
   return 'https://' + trimmed;
 }
 
+// ==== SHARED LIST CACHE (fewer round trips = faster page) ====
+let _listCache = null;
+let _listCacheTime = 0;
+const LIST_CACHE_MS = 15000;
+
+function _readSessionCache() {
+  try {
+    const raw = sessionStorage.getItem('jt_list_cache');
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+function _writeSessionCache(payload) {
+  try {
+    sessionStorage.setItem('jt_list_cache', JSON.stringify({ data: payload, time: Date.now() }));
+  } catch (e) { /* ignore quota errors */ }
+}
+
+async function fetchRequestList(forceFresh) {
+  const now = Date.now();
+  if (!forceFresh) {
+    if (_listCache && (now - _listCacheTime) < LIST_CACHE_MS) return _listCache;
+    const cached = _readSessionCache();
+    if (cached && (now - cached.time) < LIST_CACHE_MS) {
+      _listCache = cached.data;
+      _listCacheTime = cached.time;
+      return _listCache;
+    }
+  }
+  const res = await fetch(`${API_URL}?action=list`);
+  const data = await res.json();
+  if (data.ok) {
+    _listCache = data;
+    _listCacheTime = now;
+    _writeSessionCache(data);
+  }
+  return data;
+}
+
+function randomLoadingMessage(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
 function showToast(msg) {
   const toast = document.getElementById('toast');
   if (!toast) return;
