@@ -36,6 +36,13 @@ function isOverdue(deadline, status) {
   return d < today;
 }
 
+function normalizeUrl(url) {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return 'https://' + trimmed;
+}
+
 function showToast(msg) {
   const toast = document.getElementById('toast');
   if (!toast) return;
