@@ -67,6 +67,7 @@ nav button:not(.active):hover{ background:rgba(236,228,208,0.08); }
   transition: transform .15s ease, box-shadow .15s ease;
   transform: rotate(var(--rot, -0.5deg));
   animation: ticketDrop 0.3s ease both;
+  user-select:none; -webkit-user-select:none; -moz-user-select:none; -ms-user-select:none;
 }
 @keyframes ticketDrop{
   0%{ opacity:0; transform: translateY(-14px) rotate(var(--rot, -0.5deg)); }
@@ -273,7 +274,6 @@ textarea{min-height:80px; resize:vertical;}
 }
 .review-revise-submit:hover{ opacity:0.85; }
 
-/* ---- CONFETTI ---- */
 .confetti-piece{
   position: fixed; top: -20px; width: 8px; height: 14px; opacity: 0.95; z-index: 300; pointer-events: none;
   animation: confettiFall 1.4s ease-in forwards; border-radius: 1px;
