@@ -112,17 +112,19 @@ function openStatusDetail(id) {
   document.getElementById('sd-brief').textContent = r.Brief || '(no brief provided)';
 
   const refRow = document.getElementById('sd-ref-row');
-  if (r.ReferenceLink) {
+  const sdRefUrl = normalizeUrl(r.ReferenceLink);
+  if (sdRefUrl) {
     refRow.style.display = 'block';
-    refRow.innerHTML = `<a href="${escapeHTML(normalizeUrl(r.ReferenceLink))}" target="_blank" class="file-link">📎 View reference →</a>`;
+    refRow.innerHTML = `<a href="${escapeHTML(sdRefUrl)}" target="_blank" class="file-link">📎 View reference →</a>`;
   } else {
     refRow.style.display = 'none';
   }
 
   const fileRow = document.getElementById('sd-file-row');
-  if ((r.Status === 'Done' || r.Status === 'For Review') && r.FileLink) {
+  const sdFileUrl = normalizeUrl(r.FileLink);
+  if ((r.Status === 'Done' || r.Status === 'For Review') && sdFileUrl) {
     fileRow.style.display = 'block';
-    fileRow.innerHTML = `<a href="${escapeHTML(normalizeUrl(r.FileLink))}" target="_blank" class="file-link">📎 View ${r.Status === 'For Review' ? 'the work' : 'final file'} →</a>`;
+    fileRow.innerHTML = `<a href="${escapeHTML(sdFileUrl)}" target="_blank" class="file-link">📎 View ${r.Status === 'For Review' ? 'the work' : 'final file'} →</a>`;
   } else {
     fileRow.style.display = 'none';
   }
@@ -232,8 +234,9 @@ function renderReceipt(r) {
   const pillLabel = { pending: 'Pending', ongoing: 'Ongoing', review: 'For Review', done: '✓ Done', void: 'Cancelled' }[col];
 
   let fileLinkHTML = '';
-  if ((r.Status === 'Done' || r.Status === 'For Review') && r.FileLink) {
-    fileLinkHTML = `<a href="${escapeHTML(normalizeUrl(r.FileLink))}" target="_blank" class="file-link">📎 View ${r.Status === 'For Review' ? 'the work' : 'final file'} →</a>`;
+  const receiptFileUrl = normalizeUrl(r.FileLink);
+  if ((r.Status === 'Done' || r.Status === 'For Review') && receiptFileUrl) {
+    fileLinkHTML = `<a href="${escapeHTML(receiptFileUrl)}" target="_blank" class="file-link">📎 View ${r.Status === 'For Review' ? 'the work' : 'final file'} →</a>`;
   }
 
   let notesHTML = '';
