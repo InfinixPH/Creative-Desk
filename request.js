@@ -98,8 +98,12 @@ async function loadStatusList() {
 }
 
 function openStatusDetail(id) {
-  const r = statusListData.find(x => x.RequestID === id);
-  if (!r) return;
+  const wanted = String(id || '').trim().toLowerCase();
+  const r = statusListData.find(x => String(x.RequestID || '').trim().toLowerCase() === wanted);
+  if (!r) {
+    console.error('Ticket not found for ID:', JSON.stringify(id), 'Known IDs:', statusListData.map(x => x.RequestID));
+    return;
+  }
 
   document.getElementById('sd-id').textContent = r.RequestID;
   document.getElementById('sd-title').textContent = r.ProjectTitle;
