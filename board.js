@@ -185,8 +185,13 @@ document.getElementById('archive-toggle').addEventListener('click', () => {
 
 // ==== MODAL ====
 function openModal(id) {
-  currentTicket = allRequests.find(r => r.RequestID === id);
-  if (!currentTicket) return;
+  const wanted = String(id || '').trim().toLowerCase();
+  currentTicket = allRequests.find(r => String(r.RequestID || '').trim().toLowerCase() === wanted);
+  if (!currentTicket) {
+    console.error('Ticket not found for ID:', JSON.stringify(id), 'Known IDs:', allRequests.map(r => r.RequestID));
+    showToast('⚠ Could not open that ticket — refresh and try again.');
+    return;
+  }
 
   document.getElementById('m-id').textContent = currentTicket.RequestID;
   document.getElementById('m-title').textContent = currentTicket.ProjectTitle;
