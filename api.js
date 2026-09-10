@@ -41,6 +41,9 @@ function normalizeUrl(url) {
   const trimmed = String(url).trim();
   if (!trimmed) return '';
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  // Reject values that aren't plausibly a URL (e.g. a bare number like "123123"),
+  // since browsers will otherwise treat a bare number as a shorthand IP address.
+  if (!/[a-z]/i.test(trimmed) || !trimmed.includes('.')) return '';
   return 'https://' + trimmed;
 }
 
